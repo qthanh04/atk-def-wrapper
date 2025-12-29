@@ -1,192 +1,221 @@
--- =====================================================
--- SQL Script tạo Database cho ATK-DEF Backend
--- PostgreSQL Version
--- =====================================================
+-- ==============================================================
+-- ATK-DEF Backend Database Schema
+-- PostgreSQL DDL Script
+-- Schema: adg_core (unified schema)
+-- ==============================================================
 
--- Kết nối vào database mydb trước khi chạy script này
--- psql -h localhost -U admin -d mydb
+-- Create schema
+CREATE SCHEMA IF NOT EXISTS adg_core;
 
--- =====================================================
--- 1. TẠO CÁC BẢNG CƠ BẢN (KHÔNG CÓ FK)
--- =====================================================
-
--- Bảng roles: Lưu các vai trò người dùng
-CREATE TABLE IF NOT EXISTS roles (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(20) NOT NULL UNIQUE
+-- ==============================================================
+-- 1. TEAMS TABLE (Login + Team Info)
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.teams (
+    id              SERIAL PRIMARY KEY,
+    username        VARCHAR(50) NOT NULL UNIQUE,
+    password        VARCHAR(255) NOT NULL,
+    role            VARCHAR(20) NOT NULL DEFAULT 'TEAM',
+    name            VARCHAR(100) NOT NULL,
+    affiliation     VARCHAR(200),
+    country         VARCHAR(50),
+    ip_address      VARCHAR(50),
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bảng tournaments: Lưu thông tin giải đấu
-CREATE TABLE IF NOT EXISTS tournaments (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    start_time TIMESTAMP,
-    end_date TIMESTAMP
+-- Indexes for teams
+CREATE INDEX IF NOT EXISTS idx_teams_username ON adg_core.teams(username);
+CREATE INDEX IF NOT EXISTS idx_teams_name ON adg_core.teams(name);
+
+COMMENT ON TABLE adg_core.teams IS 'Team accounts - each team has one login account';
+COMMENT ON COLUMN adg_core.teams.username IS 'Login username';
+COMMENT ON COLUMN adg_core.teams.password IS 'BCrypt hashed password';
+COMMENT ON COLUMN adg_core.teams.role IS 'ADMIN or TEAM';
+COMMENT ON COLUMN adg_core.teams.name IS 'Team display name';
+
+-- ==============================================================
+-- 2. GAMES TABLE
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.games (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name                    VARCHAR(100) NOT NULL UNIQUE,
+    description             TEXT,
+    vulnbox_path            VARCHAR(500),
+    checker_module          VARCHAR(200),
+    status                  VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    tick_duration_seconds   INTEGER DEFAULT 60,
+    current_tick            INTEGER DEFAULT 0,
+    start_time              TIMESTAMP,
+    end_time                TIMESTAMP,
+    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bảng labs: Lưu thông tin phòng lab
-CREATE TABLE IF NOT EXISTS lab_entity (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    config JSONB,
-    created_at TIMESTAMP
+-- Indexes for games
+CREATE INDEX IF NOT EXISTS idx_games_status ON adg_core.games(status);
+CREATE INDEX IF NOT EXISTS idx_games_name ON adg_core.games(name);
+
+COMMENT ON TABLE adg_core.games IS 'Attack-Defense game instances';
+COMMENT ON COLUMN adg_core.games.status IS 'DRAFT, DEPLOYING, RUNNING, PAUSED, FINISHED';
+COMMENT ON COLUMN adg_core.games.tick_duration_seconds IS 'Duration of each tick in seconds';
+
+-- ==============================================================
+-- 3. GAME_TEAMS TABLE (Team participation in games)
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.game_teams (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id         UUID NOT NULL REFERENCES adg_core.games(id) ON DELETE CASCADE,
+    team_id         INTEGER NOT NULL REFERENCES adg_core.teams(id) ON DELETE CASCADE,
+    container_name  VARCHAR(200),
+    container_ip    VARCHAR(50),
+    ssh_username    VARCHAR(50),
+    ssh_password    VARCHAR(100),
+    ssh_port        INTEGER,
+    token           VARCHAR(64) NOT NULL UNIQUE,
+    is_active       BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(game_id, team_id)
 );
 
--- Bảng teams: Lưu thông tin đội thi đấu
-CREATE TABLE IF NOT EXISTS teams (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(50),
-    name VARCHAR(255) NOT NULL,
-    affiliation VARCHAR(255),
-    country VARCHAR(100),
-    ip_address VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Indexes for game_teams
+CREATE INDEX IF NOT EXISTS idx_game_teams_game_id ON adg_core.game_teams(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_teams_team_id ON adg_core.game_teams(team_id);
+CREATE INDEX IF NOT EXISTS idx_game_teams_token ON adg_core.game_teams(token);
+
+COMMENT ON TABLE adg_core.game_teams IS 'Team participation in games with container/SSH info';
+COMMENT ON COLUMN adg_core.game_teams.token IS 'Token for flag submission';
+
+-- ==============================================================
+-- 4. TICKS TABLE
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.ticks (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id         UUID NOT NULL REFERENCES adg_core.games(id) ON DELETE CASCADE,
+    tick_number     INTEGER NOT NULL,
+    status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    start_time      TIMESTAMP,
+    end_time        TIMESTAMP,
+    flags_placed    INTEGER DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(game_id, tick_number)
 );
 
--- =====================================================
--- 2. TẠO CÁC BẢNG CÓ FK LIÊN KẾT
--- =====================================================
+-- Indexes for ticks
+CREATE INDEX IF NOT EXISTS idx_ticks_game_id ON adg_core.ticks(game_id);
+CREATE INDEX IF NOT EXISTS idx_ticks_status ON adg_core.ticks(status);
 
--- Bảng users: Lưu thông tin người dùng
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(20) NOT NULL UNIQUE,
-    email VARCHAR(255) UNIQUE,
-    password VARCHAR(120),
-    team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+COMMENT ON TABLE adg_core.ticks IS 'Game ticks (time periods)';
+COMMENT ON COLUMN adg_core.ticks.status IS 'PENDING, RUNNING, COMPLETED';
+
+-- ==============================================================
+-- 5. FLAGS TABLE
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.flags (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id         UUID NOT NULL REFERENCES adg_core.games(id) ON DELETE CASCADE,
+    team_id         VARCHAR(100) NOT NULL,
+    tick_id         UUID NOT NULL REFERENCES adg_core.ticks(id) ON DELETE CASCADE,
+    flag_type       VARCHAR(20) NOT NULL DEFAULT 'SERVICE',
+    flag_value      VARCHAR(128) NOT NULL UNIQUE,
+    valid_until     TIMESTAMP NOT NULL,
+    is_stolen       BOOLEAN NOT NULL DEFAULT FALSE,
+    stolen_count    INTEGER NOT NULL DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(game_id, team_id, tick_id, flag_type)
 );
 
--- Bảng user_roles: Bảng trung gian liên kết users và roles (Many-to-Many)
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_id)
+-- Indexes for flags
+CREATE INDEX IF NOT EXISTS idx_flags_game_id ON adg_core.flags(game_id);
+CREATE INDEX IF NOT EXISTS idx_flags_team_id ON adg_core.flags(team_id);
+CREATE INDEX IF NOT EXISTS idx_flags_flag_value ON adg_core.flags(flag_value);
+
+COMMENT ON TABLE adg_core.flags IS 'Flags placed on team vulnboxes each tick';
+COMMENT ON COLUMN adg_core.flags.flag_type IS 'SERVICE or BONUS';
+
+-- ==============================================================
+-- 6. FLAG_SUBMISSIONS TABLE
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.flag_submissions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id             UUID NOT NULL REFERENCES adg_core.games(id) ON DELETE CASCADE,
+    attacker_team_id    VARCHAR(100) NOT NULL,
+    flag_id             UUID REFERENCES adg_core.flags(id) ON DELETE SET NULL,
+    submitted_flag      VARCHAR(128) NOT NULL,
+    status              VARCHAR(20) NOT NULL,
+    points              INTEGER DEFAULT 0,
+    submitted_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bảng rounds: Lưu thông tin các hiệp đấu
-CREATE TABLE IF NOT EXISTS rounds (
-    id SERIAL PRIMARY KEY,
-    tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-    number INTEGER NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL
+-- Indexes for flag_submissions
+CREATE INDEX IF NOT EXISTS idx_flag_submissions_game_id ON adg_core.flag_submissions(game_id);
+CREATE INDEX IF NOT EXISTS idx_flag_submissions_attacker ON adg_core.flag_submissions(attacker_team_id);
+CREATE INDEX IF NOT EXISTS idx_flag_submissions_status ON adg_core.flag_submissions(status);
+
+COMMENT ON TABLE adg_core.flag_submissions IS 'Flag submission attempts by attackers';
+COMMENT ON COLUMN adg_core.flag_submissions.status IS 'ACCEPTED, REJECTED, DUPLICATE, EXPIRED, OWN_FLAG, INVALID';
+
+-- ==============================================================
+-- 7. SCOREBOARD TABLE
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.scoreboard (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id         UUID NOT NULL REFERENCES adg_core.games(id) ON DELETE CASCADE,
+    team_id         VARCHAR(100) NOT NULL,
+    attack_points   INTEGER DEFAULT 0,
+    defense_points  INTEGER DEFAULT 0,
+    sla_points      INTEGER DEFAULT 0,
+    total_points    INTEGER DEFAULT 0,
+    rank            INTEGER DEFAULT 0,
+    flags_captured  INTEGER DEFAULT 0,
+    flags_lost      INTEGER DEFAULT 0,
+    last_updated    TIMESTAMP,
+    UNIQUE(game_id, team_id)
 );
 
--- Bảng challenges: Lưu thông tin các bài challenge
-CREATE TABLE IF NOT EXISTS challenges (
-    id SERIAL PRIMARY KEY,
-    lab_id INTEGER NOT NULL REFERENCES lab_entity(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    service_port INTEGER,
-    image VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Indexes for scoreboard
+CREATE INDEX IF NOT EXISTS idx_scoreboard_game_id ON adg_core.scoreboard(game_id);
+CREATE INDEX IF NOT EXISTS idx_scoreboard_rank ON adg_core.scoreboard(game_id, rank);
+
+COMMENT ON TABLE adg_core.scoreboard IS 'Live scoreboard for each game';
+
+-- ==============================================================
+-- 8. SERVICE_STATUSES TABLE
+-- ==============================================================
+CREATE TABLE IF NOT EXISTS adg_core.service_statuses (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id             UUID NOT NULL REFERENCES adg_core.games(id) ON DELETE CASCADE,
+    team_id             VARCHAR(100) NOT NULL,
+    tick_id             UUID NOT NULL REFERENCES adg_core.ticks(id) ON DELETE CASCADE,
+    status              VARCHAR(20) NOT NULL,
+    sla_percentage      REAL NOT NULL DEFAULT 100.0,
+    error_message       TEXT,
+    check_duration_ms   INTEGER,
+    checked_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(game_id, team_id, tick_id)
 );
 
--- Bảng service_entity: Lưu thông tin docker service của mỗi team
-CREATE TABLE IF NOT EXISTS service_entity (
-    id SERIAL PRIMARY KEY,
-    challenge_id INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    container_id VARCHAR(255),
-    status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Indexes for service_statuses
+CREATE INDEX IF NOT EXISTS idx_service_statuses_game_id ON adg_core.service_statuses(game_id);
+CREATE INDEX IF NOT EXISTS idx_service_statuses_status ON adg_core.service_statuses(status);
 
--- Bảng flags: Lưu các cờ (flags)
-CREATE TABLE IF NOT EXISTS flags (
-    id SERIAL PRIMARY KEY,
-    service_id INTEGER NOT NULL REFERENCES service_entity(id) ON DELETE CASCADE,
-    value VARCHAR(255) NOT NULL,
-    round INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+COMMENT ON TABLE adg_core.service_statuses IS 'Service checker results per tick';
+COMMENT ON COLUMN adg_core.service_statuses.status IS 'OK, DOWN, MUMBLE, CORRUPT, ERROR';
 
--- Bảng submissions: Lưu các lần nộp cờ
-CREATE TABLE IF NOT EXISTS submissions (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    flag_id INTEGER REFERENCES flags(id) ON DELETE SET NULL,
-    submitted_value VARCHAR(255),
-    is_valid BOOLEAN,
-    round INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Bảng scores: Lưu điểm số
-CREATE TABLE IF NOT EXISTS scores (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    round_id INTEGER NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
-    offense_score DOUBLE PRECISION,
-    defense_score DOUBLE PRECISION,
-    sla_score DOUBLE PRECISION,
-    total_score DOUBLE PRECISION,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Bảng healthchecks: Lưu kết quả healthcheck
-CREATE TABLE IF NOT EXISTS healthchecks (
-    id SERIAL PRIMARY KEY,
-    service_id INTEGER NOT NULL REFERENCES service_entity(id) ON DELETE CASCADE,
-    round_id INTEGER NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
-    status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- =====================================================
--- 3. INSERT DỮ LIỆU MẪU
--- =====================================================
-
--- Thêm các roles mặc định
-INSERT INTO roles (name) VALUES 
-    ('ROLE_TEACHER'),
-    ('ROLE_STUDENT'),
-    ('ROLE_TEAM')
-ON CONFLICT (name) DO NOTHING;
-
--- Tạo user admin (Teacher) - Password: admin123 (BCrypt encoded)
--- BCrypt hash của "admin123" = $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3mPRe.VdM8iA61EWqKdS
-INSERT INTO users (username, email, password) VALUES 
-    ('admin', 'admin@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3mPRe.VdM8iA61EWqKdS')
+-- ==============================================================
+-- INITIAL DATA: Create Admin Account
+-- Password: admin123 (BCrypt hash)
+-- ==============================================================
+INSERT INTO adg_core.teams (username, password, role, name)
+VALUES ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3YJHgkIvPh2DPFT.Nqje', 'ADMIN', 'Administrator')
 ON CONFLICT (username) DO NOTHING;
 
--- Gán role TEACHER cho user admin
-INSERT INTO user_roles (user_id, role_id)
-SELECT u.id, r.id 
-FROM users u, roles r 
-WHERE u.username = 'admin' AND r.name = 'ROLE_TEACHER'
-ON CONFLICT DO NOTHING;
-
--- =====================================================
--- 4. TẠO INDEX ĐỂ TỐI ƯU TRUY VẤN
--- =====================================================
-
--- Index cho bảng users
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_team_id ON users(team_id);
-
--- Index cho bảng teams
-CREATE INDEX IF NOT EXISTS idx_teams_username ON teams(username);
-CREATE INDEX IF NOT EXISTS idx_teams_name ON teams(name);
-
--- Index cho bảng flags
-CREATE INDEX IF NOT EXISTS idx_flags_service_id ON flags(service_id);
-CREATE INDEX IF NOT EXISTS idx_flags_round ON flags(round);
-
--- Index cho bảng submissions
-CREATE INDEX IF NOT EXISTS idx_submissions_team_id ON submissions(team_id);
-CREATE INDEX IF NOT EXISTS idx_submissions_round ON submissions(round);
-
--- Index cho bảng scores
-CREATE INDEX IF NOT EXISTS idx_scores_team_id ON scores(team_id);
-CREATE INDEX IF NOT EXISTS idx_scores_round_id ON scores(round_id);
-
--- =====================================================
--- DONE!
--- =====================================================
+-- ==============================================================
+-- SUMMARY: All tables in adg_core schema
+-- ==============================================================
+-- 1. teams           - Team login + info
+-- 2. games           - Game instances
+-- 3. game_teams      - Team participation + container info
+-- 4. ticks           - Time periods
+-- 5. flags           - Flags on vulnboxes
+-- 6. flag_submissions - Attacker submissions
+-- 7. scoreboard      - Live scores
+-- 8. service_statuses - SLA checker results
+-- ==============================================================

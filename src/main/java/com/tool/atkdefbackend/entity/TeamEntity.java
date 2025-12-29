@@ -7,8 +7,15 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Team entity - combines login credentials and team info
+ * Each team has ONE account to login
+ * 
+ * Relationships:
+ * - Team → GameTeam (one-to-many): A team can participate in multiple games
+ */
 @Entity
-@Table(name = "teams")
+@Table(name = "teams", schema = "adg_core", uniqueConstraints = @UniqueConstraint(columnNames = "username"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,42 +28,41 @@ public class TeamEntity {
     @Column(name = "id")
     private Integer id;
 
-    // --- PHẦN THÔNG TIN ĐĂNG NHẬP (Mới thêm) ---
-    @Column(name = "username", nullable = false, unique = true)
-    private String username; // Tên đăng nhập của cả đội
+    // --- LOGIN CREDENTIALS ---
+    @Column(name = "username", nullable = false, unique = true, length = 50)
+    private String username; // Login username
 
     @Column(name = "password", nullable = false)
-    private String password; // Mật khẩu dùng chung
+    private String password; // Hashed password
 
-    @Column(name = "role")
-    private String role; // Mặc định là "TEAM", admin là "ADMIN"
+    @Column(name = "role", nullable = false, length = 20)
+    @Builder.Default
+    private String role = "TEAM"; // ADMIN or TEAM
 
-    // --- PHẦN THÔNG TIN ĐỘI ---
-    @Column(name = "name", nullable = false) // Tên hiển thị (Display Name)
-    private String name;
+    // --- TEAM INFO ---
+    @Column(name = "name", nullable = false, length = 100)
+    private String name; // Team display name
 
-    @Column(name = "affiliation")
+    @Column(name = "affiliation", length = 200)
     private String affiliation;
 
-    @Column(name = "country")
+    @Column(name = "country", length = 50)
     private String country;
 
-    // IP Address để định danh trong mạng (như đã bàn)
-    @Column(name = "ip_address")
+    @Column(name = "ip_address", length = 50)
     private String ipAddress;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // --- CÁC QUAN HỆ (Bỏ List<UserEntity>) ---
+    // --- RELATIONSHIPS ---
 
-    // Một đội vẫn sở hữu nhiều Services, Scores, Submissions
-    @OneToMany(mappedBy = "team", fetch = FetchType.LAZY)
+    /**
+     * Game participations - this team's entries in various games
+     * Each GameTeam record contains game-specific info (container, ssh, token)
+     */
+    @OneToMany(mappedBy = "team", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @ToString.Exclude
-    private List<ServiceEntity> services;
-
-    @OneToMany(mappedBy = "team", fetch = FetchType.LAZY)
-    @ToString.Exclude
-    private List<ScoreEntity> scores;
+    private List<GameTeamEntity> gameTeams;
 }

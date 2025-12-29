@@ -26,7 +26,7 @@ public class TeamController {
      * Response: { "success": true, "id": 1, "name": "TeamHust" }
      */
     @PostMapping
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> createTeam(@Valid @RequestBody CreateTeamRequest request) {
         return teamService.createTeam(request);
     }
@@ -37,7 +37,7 @@ public class TeamController {
      * Response: { "success": true, "imported_count": 50 }
      */
     @PostMapping("/bulk")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> importTeams(@RequestParam("file") MultipartFile file) {
         return teamService.importTeamsFromCsv(file);
     }
@@ -57,7 +57,7 @@ public class TeamController {
      * Response: { "id": 10, "updated": true }
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> updateTeam(@PathVariable Integer id,
             @RequestBody UpdateTeamRequest request) {
         return teamService.updateTeam(id, request);
@@ -68,7 +68,7 @@ public class TeamController {
      * Response: { "message": "Deleted" }
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> deleteTeam(@PathVariable Integer id) {
         return teamService.deleteTeam(id);
     }

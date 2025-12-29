@@ -1,8 +1,8 @@
 package com.tool.atkdefbackend.controller;
 
 import com.tool.atkdefbackend.model.request.LoginRequest;
-import com.tool.atkdefbackend.model.request.SignUpRequest;
-import com.tool.atkdefbackend.model.response.UserInfoResponse;
+import com.tool.atkdefbackend.model.request.TeamSignUpRequest;
+import com.tool.atkdefbackend.model.response.TeamInfoResponse;
 import com.tool.atkdefbackend.service.auth.AuthService;
 import com.tool.atkdefbackend.service.auth.UserDetailsImpl;
 import jakarta.validation.Valid;
@@ -21,23 +21,35 @@ public class AuthController {
         this.authService = authService;
     }
 
+    /**
+     * Team login
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         return authService.signIn(loginRequest);
     }
 
+    /**
+     * Alias for login
+     */
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateTeam(@Valid @RequestBody LoginRequest loginRequest) {
         return authService.signIn(loginRequest);
     }
 
+    /**
+     * Register new team
+     */
     @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignUpRequest signUpRequest) {
+    public ResponseEntity<?> registerTeam(@Valid @RequestBody TeamSignUpRequest signUpRequest) {
         return authService.signUp(signUpRequest);
     }
 
+    /**
+     * Get current logged-in team info
+     */
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser() {
+    public ResponseEntity<?> getCurrentTeam() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Unauthorized");
@@ -45,27 +57,22 @@ public class AuthController {
 
         Object principal = authentication.getPrincipal();
 
-        // Check if principal is UserDetailsImpl
         if (principal instanceof UserDetailsImpl userDetails) {
             String role = userDetails.getAuthorities().stream()
                     .findFirst()
                     .map(auth -> auth.getAuthority())
                     .orElse("UNKNOWN");
 
-            UserInfoResponse response = new UserInfoResponse(
+            TeamInfoResponse response = new TeamInfoResponse(
                     userDetails.getId(),
                     userDetails.getUsername(),
-                    role.replace("ROLE_", "") // Return TEACHER instead of ROLE_TEACHER
-            );
+                    userDetails.getTeamName(),
+                    role.replace("ROLE_", ""));
             return ResponseEntity.ok(response);
         }
 
-        // If principal is a String (username), return basic info
         if (principal instanceof String username) {
-            return ResponseEntity.ok(new UserInfoResponse(
-                    null,
-                    username,
-                    "UNKNOWN"));
+            return ResponseEntity.ok(new TeamInfoResponse(null, username, null, "UNKNOWN"));
         }
 
         return ResponseEntity.status(401).body("Unauthorized");

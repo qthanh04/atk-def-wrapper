@@ -79,9 +79,13 @@ public class WebSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/signup").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/signin").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/api/teams").permitAll() // Public for dropdown
                         .requestMatchers("/api/scoreboard").permitAll() // Public scoreboard
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated());
 
         http.authenticationProvider(authenticationProvider());

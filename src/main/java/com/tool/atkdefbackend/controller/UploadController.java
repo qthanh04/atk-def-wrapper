@@ -25,12 +25,12 @@ public class UploadController {
      * POST /api/upload/checker
      */
     @PostMapping("/checker")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> uploadChecker(
             @RequestParam("file") MultipartFile file,
             @RequestParam("challengeId") Integer challengeId) {
         try {
-           UploadResponse result = fileUploadService.uploadChecker(file, challengeId);
+            UploadResponse result = fileUploadService.uploadChecker(file, challengeId);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             return ResponseEntity.internalServerError()
@@ -43,7 +43,7 @@ public class UploadController {
      * POST /api/upload/vulnbox
      */
     @PostMapping("/vulnbox")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> uploadVulnBox(
             @RequestParam("file") MultipartFile file,
             @RequestParam("challengeId") Integer challengeId) {

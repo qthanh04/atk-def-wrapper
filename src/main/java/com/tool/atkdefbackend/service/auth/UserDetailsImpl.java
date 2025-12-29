@@ -1,57 +1,53 @@
 package com.tool.atkdefbackend.service.auth;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import com.tool.atkdefbackend.entity.security.UserEntity;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.tool.atkdefbackend.entity.TeamEntity;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+import java.util.Objects;
 
+@Getter
 public class UserDetailsImpl implements UserDetails {
 
     private static final long serialVersionUID = 1L;
 
+    private final Integer id;
+    private final String username;
+    private final String teamName;
 
-    private Long id;
-    private String username;
-    private String email;
     @JsonIgnore
-    private String password;
+    private final String password;
 
-    private Collection<? extends GrantedAuthority> authorities;
+    private final Collection<? extends GrantedAuthority> authorities;
 
-    public Collection<? extends GrantedAuthority> getAuthorities;
-
-    public UserDetailsImpl(Long id, String username, String email, String password,
-                           Collection<? extends GrantedAuthority> authorities) {
+    public UserDetailsImpl(Integer id, String username, String teamName, String password,
+            Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
-        this.email = email;
+        this.teamName = teamName;
         this.password = password;
         this.authorities = authorities;
     }
 
-    public static UserDetailsImpl build(UserEntity user) {
-        List<GrantedAuthority> author = user.getRoles().
-                stream().map(role ->new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
+    /**
+     * Build UserDetails from TeamEntity
+     * Team's role field is used for authorization (ADMIN or TEAM)
+     */
+    public static UserDetailsImpl build(TeamEntity team) {
+        List<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_" + team.getRole()));
+
         return new UserDetailsImpl(
-                user.getId().longValue(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getPassword(),
-                author
-        );
+                team.getId(),
+                team.getUsername(),
+                team.getName(),
+                team.getPassword(),
+                authorities);
     }
 
     @Override
@@ -91,9 +87,16 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof UserDetailsImpl)) return false;
-        UserDetailsImpl user = (UserDetailsImpl) o;
-        return id.equals(user.id);
+        if (this == o)
+            return true;
+        if (!(o instanceof UserDetailsImpl))
+            return false;
+        UserDetailsImpl that = (UserDetailsImpl) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

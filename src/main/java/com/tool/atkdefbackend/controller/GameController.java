@@ -23,7 +23,7 @@ public class GameController {
      * Proxies to Python: /internal/game/start
      */
     @PostMapping("/start")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> startGame() {
         Map<String, Object> result = pythonProxyService.startGame();
         return ResponseEntity.ok(result);
@@ -35,7 +35,7 @@ public class GameController {
      * Proxies to Python: /internal/game/stop
      */
     @PostMapping("/stop")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> stopGame() {
         Map<String, Object> result = pythonProxyService.stopGame();
         return ResponseEntity.ok(result);
@@ -47,7 +47,7 @@ public class GameController {
      * Proxies to Python: /internal/game/status
      */
     @GetMapping("/status")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> getGameStatus() {
         Object result = pythonProxyService.getGameStatus();
         return ResponseEntity.ok(result);

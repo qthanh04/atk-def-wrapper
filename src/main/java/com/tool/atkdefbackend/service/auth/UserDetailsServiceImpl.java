@@ -1,6 +1,7 @@
 package com.tool.atkdefbackend.service.auth;
-import com.tool.atkdefbackend.entity.security.UserEntity;
-import com.tool.atkdefbackend.repository.UserRepository;
+
+import com.tool.atkdefbackend.entity.TeamEntity;
+import com.tool.atkdefbackend.repository.TeamRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -9,16 +10,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final UserRepository userRepository;
+    private final TeamRepository teamRepository;
 
-    public UserDetailsServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserDetailsServiceImpl(TeamRepository teamRepository) {
+        this.teamRepository = teamRepository;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-      UserEntity user = userRepository.findByUsername(username)
-              .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + username));
-        return UserDetailsImpl.build(user);
+        TeamEntity team = teamRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Team Not Found with username: " + username));
+        return UserDetailsImpl.build(team);
     }
 }
