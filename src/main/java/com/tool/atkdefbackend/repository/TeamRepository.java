@@ -18,4 +18,6 @@ public interface TeamRepository extends JpaRepository<TeamEntity, Integer> {
     boolean existsByName(String name);
 
     boolean existsByIpAddress(String ipAddress);
+
+    java.util.List<TeamEntity> findByRole(String role);
 }

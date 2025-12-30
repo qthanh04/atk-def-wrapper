@@ -40,8 +40,7 @@ public class TeamService {
                 request.getName(),
                 request.getCountry(),
                 request.getAffiliation(),
-                request.getIpAddress()
-        );
+                request.getIpAddress());
 
         return teamRepository.save(team);
     }
@@ -68,8 +67,12 @@ public class TeamService {
 
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
-                if (isFirstLine) { isFirstLine = false; continue; } // Skip header
-                if (line.trim().isEmpty()) continue; // Skip empty lines
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                } // Skip header
+                if (line.trim().isEmpty())
+                    continue; // Skip empty lines
 
                 String[] columns = line.split(",", -1); // -1 to keep empty trailing strings
                 if (columns.length < 1) {
@@ -106,15 +109,14 @@ public class TeamService {
         return Map.of(
                 "success", true,
                 "imported_count", validTeams.size(),
-                "errors", errors
-        );
+                "errors", errors);
     }
 
     /**
      * Get all teams mapped to DTO
      */
     public List<TeamResponse> getAllTeams() {
-        return teamRepository.findAll().stream()
+        return teamRepository.findByRole("TEAM").stream()
                 .map(this::mapToResponse)
                 .toList(); // Java 16+
     }
@@ -134,12 +136,16 @@ public class TeamService {
             }
             team.setName(request.getName());
             // Optional: Update username/password if name changes?
-            // Usually we DON'T change username/password when name changes, logic stays simple here.
+            // Usually we DON'T change username/password when name changes, logic stays
+            // simple here.
         }
 
-        if (request.getCountry() != null) team.setCountry(request.getCountry());
-        if (request.getAffiliation() != null) team.setAffiliation(request.getAffiliation());
-        if (request.getIpAddress() != null) team.setIpAddress(request.getIpAddress());
+        if (request.getCountry() != null)
+            team.setCountry(request.getCountry());
+        if (request.getAffiliation() != null)
+            team.setAffiliation(request.getAffiliation());
+        if (request.getIpAddress() != null)
+            team.setIpAddress(request.getIpAddress());
 
         return teamRepository.save(team);
     }
