@@ -16,5 +16,6 @@ public class CreateTeamRequest {
 
     private String affiliation;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("ip_address")
     private String ipAddress;
 }
