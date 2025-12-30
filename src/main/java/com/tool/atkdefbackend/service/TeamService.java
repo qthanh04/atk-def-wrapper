@@ -125,29 +125,30 @@ public class TeamService {
      * Update team
      */
     @Transactional
-    public TeamEntity updateTeam(Integer id, UpdateTeamRequest request) {
+    public TeamResponse updateTeam(Integer id, UpdateTeamRequest request) {
         TeamEntity team = teamRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Team not found"));
 
         // Validate unique name if name is changed
-        if (request.getName() != null && !request.getName().equals(team.getName())) {
-            if (teamRepository.existsByName(request.getName())) {
-                throw new IllegalArgumentException("Team name already exists!");
+        if (request.getName() != null) {
+            String newName = request.getName().trim();
+            if (!newName.equals(team.getName()) && !newName.isEmpty()) {
+                if (teamRepository.existsByName(newName)) {
+                    throw new IllegalArgumentException("Team name already exists!");
+                }
+                team.setName(newName);
             }
-            team.setName(request.getName());
-            // Optional: Update username/password if name changes?
-            // Usually we DON'T change username/password when name changes, logic stays
-            // simple here.
         }
 
         if (request.getCountry() != null)
-            team.setCountry(request.getCountry());
+            team.setCountry(request.getCountry().trim());
         if (request.getAffiliation() != null)
-            team.setAffiliation(request.getAffiliation());
+            team.setAffiliation(request.getAffiliation().trim());
         if (request.getIpAddress() != null)
-            team.setIpAddress(request.getIpAddress());
+            team.setIpAddress(request.getIpAddress().trim());
 
-        return teamRepository.save(team);
+        TeamEntity savedTeam = teamRepository.save(team);
+        return mapToResponse(savedTeam);
     }
 
     public void deleteTeam(Integer id) {

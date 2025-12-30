@@ -33,8 +33,8 @@ public class TeamController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> createTeam(@Valid @RequestBody CreateTeamRequest request) {
-            TeamEntity team = teamService.createTeam(request);
-            return ResponseEntity.status(201).body(team);
+        TeamEntity team = teamService.createTeam(request);
+        return ResponseEntity.status(201).body(team);
     }
 
     /**
@@ -55,7 +55,7 @@ public class TeamController {
      */
     @GetMapping
     public ResponseEntity<?> getAllTeams() {
-       List<TeamResponse> teams = teamService.getAllTeams();
+        List<TeamResponse> teams = teamService.getAllTeams();
         return ResponseEntity.ok(teams);
     }
 
@@ -68,7 +68,7 @@ public class TeamController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> updateTeam(@PathVariable Integer id,
             @RequestBody UpdateTeamRequest request) {
-       TeamEntity team = teamService.updateTeam(id, request);
+        TeamResponse team = teamService.updateTeam(id, request);
         return ResponseEntity.ok(team);
     }
 
@@ -79,7 +79,7 @@ public class TeamController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> deleteTeam(@PathVariable Integer id) {
-       teamService.deleteTeam(id);
+        teamService.deleteTeam(id);
         return ResponseEntity.ok(Map.of("message", "Team deleted successfully"));
     }
 }
