@@ -1,13 +1,18 @@
 package com.tool.atkdefbackend.controller;
 
+import com.tool.atkdefbackend.entity.TeamEntity;
 import com.tool.atkdefbackend.model.request.CreateTeamRequest;
 import com.tool.atkdefbackend.model.request.UpdateTeamRequest;
+import com.tool.atkdefbackend.model.response.TeamResponse;
 import com.tool.atkdefbackend.service.TeamService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/teams")
@@ -28,7 +33,8 @@ public class TeamController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> createTeam(@Valid @RequestBody CreateTeamRequest request) {
-        return teamService.createTeam(request);
+            TeamEntity team = teamService.createTeam(request);
+            return ResponseEntity.status(201).body(team);
     }
 
     /**
@@ -39,7 +45,8 @@ public class TeamController {
     @PostMapping("/bulk")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> importTeams(@RequestParam("file") MultipartFile file) {
-        return teamService.importTeamsFromCsv(file);
+        Map<String, Object> team = teamService.importTeamsFromCsv(file);
+        return ResponseEntity.status(201).body(team);
     }
 
     /**
@@ -48,7 +55,8 @@ public class TeamController {
      */
     @GetMapping
     public ResponseEntity<?> getAllTeams() {
-        return teamService.getAllTeams();
+       List<TeamResponse> teams = teamService.getAllTeams();
+        return ResponseEntity.ok(teams);
     }
 
     /**
@@ -60,7 +68,8 @@ public class TeamController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> updateTeam(@PathVariable Integer id,
             @RequestBody UpdateTeamRequest request) {
-        return teamService.updateTeam(id, request);
+       TeamEntity team = teamService.updateTeam(id, request);
+        return ResponseEntity.ok(team);
     }
 
     /**
@@ -70,6 +79,7 @@ public class TeamController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> deleteTeam(@PathVariable Integer id) {
-        return teamService.deleteTeam(id);
+       teamService.deleteTeam(id);
+        return ResponseEntity.ok(Map.of("message", "Team deleted successfully"));
     }
 }

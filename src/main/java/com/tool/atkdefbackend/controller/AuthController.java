@@ -22,14 +22,6 @@ public class AuthController {
     }
 
     /**
-     * Team login
-     */
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        return authService.signIn(loginRequest);
-    }
-
-    /**
      * Alias for login
      */
     @PostMapping("/signin")

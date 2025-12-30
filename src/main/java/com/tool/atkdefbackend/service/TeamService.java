@@ -5,9 +5,11 @@ import com.tool.atkdefbackend.model.request.CreateTeamRequest;
 import com.tool.atkdefbackend.model.request.UpdateTeamRequest;
 import com.tool.atkdefbackend.model.response.TeamResponse;
 import com.tool.atkdefbackend.repository.TeamRepository;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -17,62 +19,44 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor // Tự tạo Constructor Injection
 public class TeamService {
 
     private final TeamRepository teamRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public TeamService(TeamRepository teamRepository, PasswordEncoder passwordEncoder) {
-        this.teamRepository = teamRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
-
     /**
      * Create a single team
+     * Returns the created entity, Controller will wrap it in ResponseEntity
      */
-    public ResponseEntity<?> createTeam(CreateTeamRequest request) {
-        // Check if team name already exists
+    public TeamEntity createTeam(CreateTeamRequest request) {
         if (teamRepository.existsByName(request.getName())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Team name already exists!"));
+            throw new IllegalArgumentException("Team name already exists!");
         }
 
-        // Generate username from team name (lowercase, no spaces)
-        String username = request.getName().toLowerCase().replaceAll("\\s+", "_");
+        TeamEntity team = buildTeamEntity(
+                request.getName(),
+                request.getCountry(),
+                request.getAffiliation(),
+                request.getIpAddress()
+        );
 
-        // Generate default password
-        String defaultPassword = username + "123";
-
-        TeamEntity team = TeamEntity.builder()
-                .name(request.getName())
-                .username(username)
-                .password(passwordEncoder.encode(defaultPassword))
-                .role("TEAM")
-                .country(request.getCountry())
-                .affiliation(request.getAffiliation())
-                .ipAddress(request.getIpAddress())
-                .build();
-
-        teamRepository.save(team);
-
-        return ResponseEntity.status(201).body(Map.of(
-                "success", true,
-                "id", team.getId(),
-                "name", team.getName(),
-                "username", username,
-                "defaultPassword", defaultPassword));
+        return teamRepository.save(team);
     }
 
     /**
-     * Import teams from CSV file
-     * Expected CSV format: name,country,affiliation,ip_address
+     * Import teams from CSV
+     * Uses @Transactional to ensure data integrity
      */
-    public ResponseEntity<?> importTeamsFromCsv(MultipartFile file) {
+    @Transactional
+    public Map<String, Object> importTeamsFromCsv(MultipartFile file) {
         if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+            throw new IllegalArgumentException("File is empty");
         }
 
-        List<TeamEntity> importedTeams = new ArrayList<>();
+        List<TeamEntity> validTeams = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         int lineNumber = 0;
 
@@ -84,124 +68,113 @@ public class TeamService {
 
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
+                if (isFirstLine) { isFirstLine = false; continue; } // Skip header
+                if (line.trim().isEmpty()) continue; // Skip empty lines
 
-                // Skip header line
-                if (isFirstLine) {
-                    isFirstLine = false;
-                    continue;
-                }
-
-                // Skip empty lines
-                if (line.trim().isEmpty()) {
-                    continue;
-                }
-
-                String[] columns = line.split(",");
+                String[] columns = line.split(",", -1); // -1 to keep empty trailing strings
                 if (columns.length < 1) {
                     errors.add("Line " + lineNumber + ": Invalid format");
                     continue;
                 }
 
                 String name = columns[0].trim();
+                if (name.isEmpty()) {
+                    errors.add("Line " + lineNumber + ": Name required");
+                    continue;
+                }
+
+                if (teamRepository.existsByName(name)) {
+                    errors.add("Line " + lineNumber + ": Team '" + name + "' exists");
+                    continue;
+                }
+
+                // Reuse logic
                 String country = columns.length > 1 ? columns[1].trim() : "";
                 String affiliation = columns.length > 2 ? columns[2].trim() : "";
                 String ipAddress = columns.length > 3 ? columns[3].trim() : "";
 
-                if (name.isEmpty()) {
-                    errors.add("Line " + lineNumber + ": Team name is required");
-                    continue;
-                }
-
-                // Skip if team name already exists
-                if (teamRepository.existsByName(name)) {
-                    errors.add("Line " + lineNumber + ": Team '" + name + "' already exists");
-                    continue;
-                }
-
-                String username = name.toLowerCase().replaceAll("\\s+", "_");
-                String defaultPassword = username + "123";
-
-                TeamEntity team = TeamEntity.builder()
-                        .name(name)
-                        .username(username)
-                        .password(passwordEncoder.encode(defaultPassword))
-                        .role("TEAM")
-                        .country(country)
-                        .affiliation(affiliation)
-                        .ipAddress(ipAddress)
-                        .build();
-
-                importedTeams.add(team);
+                validTeams.add(buildTeamEntity(name, country, affiliation, ipAddress));
             }
 
-            // Save all valid teams
-            teamRepository.saveAll(importedTeams);
+            teamRepository.saveAll(validTeams);
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Failed to parse CSV file: " + e.getMessage()));
+            log.error("CSV Import failed", e);
+            throw new RuntimeException("Failed to process CSV: " + e.getMessage());
         }
 
-        return ResponseEntity.ok(Map.of(
+        return Map.of(
                 "success", true,
-                "imported_count", importedTeams.size(),
-                "errors", errors));
+                "imported_count", validTeams.size(),
+                "errors", errors
+        );
     }
 
     /**
-     * Get all teams
+     * Get all teams mapped to DTO
      */
-    public ResponseEntity<?> getAllTeams() {
-        List<TeamResponse> teams = teamRepository.findAll().stream()
-                .map(team -> TeamResponse.builder()
-                        .id(team.getId())
-                        .name(team.getName())
-                        .country(team.getCountry())
-                        .affiliation(team.getAffiliation())
-                        .ipAddress(team.getIpAddress())
-                        .build())
-                .toList();
-
-        return ResponseEntity.ok(teams);
+    public List<TeamResponse> getAllTeams() {
+        return teamRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .toList(); // Java 16+
     }
 
     /**
-     * Update team by ID
+     * Update team
      */
-    public ResponseEntity<?> updateTeam(Integer id, UpdateTeamRequest request) {
-        return teamRepository.findById(id)
-                .map(team -> {
-                    if (request.getName() != null) {
-                        team.setName(request.getName());
-                    }
-                    if (request.getCountry() != null) {
-                        team.setCountry(request.getCountry());
-                    }
-                    if (request.getAffiliation() != null) {
-                        team.setAffiliation(request.getAffiliation());
-                    }
-                    if (request.getIpAddress() != null) {
-                        team.setIpAddress(request.getIpAddress());
-                    }
+    @Transactional
+    public TeamEntity updateTeam(Integer id, UpdateTeamRequest request) {
+        TeamEntity team = teamRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Team not found"));
 
-                    teamRepository.save(team);
-
-                    return ResponseEntity.ok(Map.of(
-                            "id", team.getId(),
-                            "updated", true));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Delete team by ID
-     */
-    public ResponseEntity<?> deleteTeam(Integer id) {
-        if (!teamRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+        // Validate unique name if name is changed
+        if (request.getName() != null && !request.getName().equals(team.getName())) {
+            if (teamRepository.existsByName(request.getName())) {
+                throw new IllegalArgumentException("Team name already exists!");
+            }
+            team.setName(request.getName());
+            // Optional: Update username/password if name changes?
+            // Usually we DON'T change username/password when name changes, logic stays simple here.
         }
 
+        if (request.getCountry() != null) team.setCountry(request.getCountry());
+        if (request.getAffiliation() != null) team.setAffiliation(request.getAffiliation());
+        if (request.getIpAddress() != null) team.setIpAddress(request.getIpAddress());
+
+        return teamRepository.save(team);
+    }
+
+    public void deleteTeam(Integer id) {
+        if (!teamRepository.existsById(id)) {
+            throw new IllegalArgumentException("Team not found");
+        }
         teamRepository.deleteById(id);
-        return ResponseEntity.ok(Map.of("message", "Deleted"));
+    }
+
+    // === Helper Methods (DRY - Don't Repeat Yourself) ===
+
+    private TeamEntity buildTeamEntity(String name, String country, String affiliation, String ipAddress) {
+        String username = name.toLowerCase().replaceAll("\\s+", "_");
+        String defaultPassword = username + "123";
+
+        return TeamEntity.builder()
+                .name(name)
+                .username(username)
+                .password(passwordEncoder.encode(defaultPassword))
+                .role("TEAM")
+                .country(country)
+                .affiliation(affiliation)
+                .ipAddress(ipAddress)
+                .build();
+    }
+
+    private TeamResponse mapToResponse(TeamEntity team) {
+        return TeamResponse.builder()
+                .id(team.getId())
+                .name(team.getName())
+                .country(team.getCountry())
+                .affiliation(team.getAffiliation())
+                .ipAddress(team.getIpAddress())
+                .build();
     }
 }

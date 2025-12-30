@@ -92,7 +92,7 @@ psql --version   # Cần >= 15
 ### 1. Clone repository
 
 ```bash
-git clone https://github.com/your-org/atk-def-backend.git
+git clone https://github.com/qthanh04/atk-def-backend.git
 cd atk-def-backend
 ```
 
@@ -717,82 +717,6 @@ docker run -p 8080:8080 \
   atk-def-backend
 ```
 
-### Docker Compose
-
-```yaml
-version: '3.8'
-services:
-  backend:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - DATABASE_URL=jdbc:postgresql://postgres:5432/adg_core
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
-      - JWT_SECRET=your-super-secret-key-minimum-32-characters
-      - PYTHON_SERVER_URL=http://game-server:8000
-    depends_on:
-      - postgres
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: adg_core
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
-```
-
-### Railway
-
-Đặt các environment variables trong Railway dashboard:
-- `DATABASE_URL` (auto từ PostgreSQL plugin)
-- `JWT_SECRET`
-- `PYTHON_SERVER_URL`
-
----
-
-## 🧪 Testing
-
-### cURL Examples
-
-```bash
-# Set base URL
-BASE=http://localhost:8080/api
-
-# 1. Login
-TOKEN=$(curl -s -X POST $BASE/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' \
-  | jq -r '.token')
-
-echo "Token: $TOKEN"
-
-# 2. Get current user
-curl -H "Authorization: Bearer $TOKEN" $BASE/auth/me
-
-# 3. List teams
-curl $BASE/teams
-
-# 4. Create team (Admin)
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Team","country":"VN"}' \
-  $BASE/teams
-
-# 5. Get scoreboard
-curl $BASE/scoreboard
-
-# 6. Game status (Admin)
-curl -H "Authorization: Bearer $TOKEN" $BASE/game/status
-```
-
----
 
 ## 📄 License
 
