@@ -28,4 +28,7 @@ public class TeamSignUpRequest {
 
     @Size(max = 50)
     private String country;
+
+    @Size(max = 20)
+    private String role;
 }

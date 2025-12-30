@@ -75,7 +75,9 @@ public class AuthService {
                 .name(signUpRequest.getTeamName())
                 .affiliation(signUpRequest.getAffiliation())
                 .country(signUpRequest.getCountry())
-                .role("TEAM") // Default role for new teams
+                .role(signUpRequest.getRole() != null && !signUpRequest.getRole().isBlank()
+                        ? signUpRequest.getRole().toUpperCase()
+                        : "TEAM")
                 .build();
 
         teamRepository.save(team);
