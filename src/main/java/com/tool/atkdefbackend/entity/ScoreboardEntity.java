@@ -10,7 +10,7 @@ import java.util.UUID;
  * Scoreboard entity matching AnD.platform scoreboard table
  */
 @Entity
-@Table(name = "scoreboard", schema = "adg_core", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id",
+@Table(name = "scoreboard", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id",
         "team_id" }))
 @Getter
 @Setter

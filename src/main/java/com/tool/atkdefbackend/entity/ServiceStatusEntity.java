@@ -12,7 +12,7 @@ import java.util.UUID;
  * ServiceStatus entity matching AnD.platform service_statuses table
  */
 @Entity
-@Table(name = "service_statuses", schema = "adg_core", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id",
+@Table(name = "service_statuses", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id",
         "team_id", "tick_id" }))
 @Getter
 @Setter
@@ -38,7 +38,7 @@ public class ServiceStatusEntity {
     private TickEntity tick;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "checkstatus")
     private CheckStatus status;
 
     @Column(name = "sla_percentage", nullable = false)

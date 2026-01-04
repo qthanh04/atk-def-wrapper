@@ -13,7 +13,7 @@ import java.util.UUID;
  * Game entity matching AnD.platform games table
  */
 @Entity
-@Table(name = "games", schema = "adg_core")
+@Table(name = "games")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,6 +32,14 @@ public class GameEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    // FK to vulnboxes table (GameCoreServer creates this)
+    @Column(name = "vulnbox_id", columnDefinition = "uuid")
+    private UUID vulnboxId;
+
+    // FK to checkers table (GameCoreServer creates this)
+    @Column(name = "checker_id", columnDefinition = "uuid")
+    private UUID checkerId;
+
     @Column(name = "vulnbox_path", length = 500)
     private String vulnboxPath;
 
@@ -39,11 +47,14 @@ public class GameEntity {
     private String checkerModule;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "gamestatus")
     private GameStatus status = GameStatus.DRAFT;
 
     @Column(name = "tick_duration_seconds")
     private Integer tickDurationSeconds = 60;
+
+    @Column(name = "max_ticks")
+    private Integer maxTicks;
 
     @Column(name = "current_tick")
     private Integer currentTick = 0;

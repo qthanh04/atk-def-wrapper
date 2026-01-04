@@ -4,20 +4,11 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    # Railway Environment Variables
-    # DATABASE_URL: jdbc:postgresql://...
-    # Sử dụng biến môi trường có sẵn của Railway để ghép thành JDBC URL
-    # Fallback về localhost cho môi trường dev
-    # Production: Dùng Internal Network (PGHOST...)
-    # Local: Set PGHOST=public_host trong IDE hoặc fallback về localhost
-#    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:adg_core}
-#    username: ${PGUSER:admin}
-#    password: ${PGPASSWORD:admin123}
-#    driver-class-name: org.postgresql.Driver
-      url: jdbc:postgresql://localhost:5432/adg_core
-      username: admin
-      password: admin123
-      driver-class-name: org.postgresql.Driver
+    # Use same credentials as GameCoreServer
+    url: jdbc:postgresql://localhost:5432/adg_core
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -26,7 +17,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_schema: adg_core
+        # Removed default_schema to use public schema (same as GameCoreServer)
 
 jwt:
   # Cần set biến môi trường JWT_SECRET trên server

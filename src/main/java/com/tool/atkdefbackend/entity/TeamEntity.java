@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * Team entity - combines login credentials and team info
@@ -15,7 +14,7 @@ import java.util.List;
  * - Team → GameTeam (one-to-many): A team can participate in multiple games
  */
 @Entity
-@Table(name = "teams", schema = "adg_core", uniqueConstraints = @UniqueConstraint(columnNames = "username"))
+@Table(name = "teams", uniqueConstraints = @UniqueConstraint(columnNames = "username"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -56,13 +55,4 @@ public class TeamEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // --- RELATIONSHIPS ---
-
-    /**
-     * Game participations - this team's entries in various games
-     * Each GameTeam record contains game-specific info (container, ssh, token)
-     */
-    @OneToMany(mappedBy = "team", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @ToString.Exclude
-    private List<GameTeamEntity> gameTeams;
 }

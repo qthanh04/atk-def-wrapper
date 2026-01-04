@@ -13,7 +13,7 @@ import java.util.UUID;
  * Flag entity matching AnD.platform flags table
  */
 @Entity
-@Table(name = "flags", schema = "adg_core", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id", "team_id",
+@Table(name = "flags", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id", "team_id",
         "tick_id", "flag_type" }))
 @Getter
 @Setter
@@ -39,7 +39,7 @@ public class FlagEntity {
     private TickEntity tick;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "flag_type", nullable = false)
+    @Column(name = "flag_type", nullable = false, columnDefinition = "flagtype")
     private FlagType flagType;
 
     @Column(name = "flag_value", nullable = false, unique = true, length = 128)

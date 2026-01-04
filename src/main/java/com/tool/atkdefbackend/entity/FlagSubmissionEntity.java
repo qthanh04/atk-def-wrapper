@@ -12,7 +12,7 @@ import java.util.UUID;
  * FlagSubmission entity matching AnD.platform flag_submissions table
  */
 @Entity
-@Table(name = "flag_submissions", schema = "adg_core")
+@Table(name = "flag_submissions")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,7 +40,7 @@ public class FlagSubmissionEntity {
     private String submittedFlag;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "submissionstatus")
     private SubmissionStatus status;
 
     @Column(name = "points")

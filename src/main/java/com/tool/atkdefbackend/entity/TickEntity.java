@@ -14,7 +14,7 @@ import java.util.UUID;
  * Represents a time period in the game
  */
 @Entity
-@Table(name = "ticks", schema = "adg_core")
+@Table(name = "ticks")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,7 +35,7 @@ public class TickEntity {
     private Integer tickNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "tickstatus")
     private TickStatus status = TickStatus.PENDING;
 
     @Column(name = "start_time")

@@ -11,13 +11,10 @@ import java.util.UUID;
  * GameTeam entity matching AnD.platform game_teams table
  * Represents a team's participation in a specific game
  * 
- * Relationships:
- * - Team → GameTeam (one-to-many): One team can join multiple games
- * - Game → GameTeam (one-to-many): One game has multiple team participants
+ * Note: team_id is String (not FK) to match GameCoreServer
  */
 @Entity
-@Table(name = "game_teams", schema = "adg_core", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id",
-        "team_id" }))
+@Table(name = "game_teams", uniqueConstraints = @UniqueConstraint(columnNames = { "game_id", "team_id" }))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,11 +32,11 @@ public class GameTeamEntity {
     private GameEntity game;
 
     /**
-     * Reference to the Team entity (teams table)
+     * Team identifier as String (matches GameCoreServer's varchar(100))
+     * This should be the team's display name from the teams table
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
-    private TeamEntity team;
+    @Column(name = "team_id", nullable = false, length = 100)
+    private String teamId;
 
     // --- Container/SSH Info (set when game starts) ---
     @Column(name = "container_name", length = 200)
@@ -60,8 +57,9 @@ public class GameTeamEntity {
     /**
      * Team token for flag submission
      * Each team gets a unique token per game
+     * Nullable to match GameCoreServer
      */
-    @Column(name = "token", nullable = false, unique = true, length = 64)
+    @Column(name = "token", unique = true, length = 64)
     private String token;
 
     @Builder.Default
