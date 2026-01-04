@@ -5,6 +5,7 @@ import com.tool.atkdefbackend.model.request.TeamSignUpRequest;
 import com.tool.atkdefbackend.model.response.TeamInfoResponse;
 import com.tool.atkdefbackend.service.auth.AuthService;
 import com.tool.atkdefbackend.service.auth.UserDetailsImpl;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Auth", description = "🔐 Authentication - Login, Register, Get current user")
 public class AuthController {
 
     private final AuthService authService;

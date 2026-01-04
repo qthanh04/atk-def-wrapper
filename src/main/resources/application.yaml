@@ -26,7 +26,8 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_schema: adg_core
+        # Dùng schema public để chia sẻ với Python backend
+        default_schema: public
 
 jwt:
   # Cần set biến môi trường JWT_SECRET trên server

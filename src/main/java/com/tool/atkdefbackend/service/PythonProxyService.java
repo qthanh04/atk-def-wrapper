@@ -20,7 +20,8 @@ import java.util.*;
 @RequiredArgsConstructor // 2. Tự động sinh Constructor injection
 public class PythonProxyService {
 
-//    Lỗi này xảy ra vì Spring Boot không tự động tạo Bean RestTemplate mặc định. Bạn cần phải tự khai báo nó.
+    // Lỗi này xảy ra vì Spring Boot không tự động tạo Bean RestTemplate mặc định.
+    // Bạn cần phải tự khai báo nó.
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper; // 3. Dùng chung ObjectMapper của Spring
 
@@ -67,6 +68,50 @@ public class PythonProxyService {
     }
 
     /**
+     * Generic proxy PATCH request
+     */
+    public <T> T proxyPatch(String endpoint, Object body, Class<T> responseType) {
+        String url = pythonServerUrl + endpoint;
+        log.info("Proxying PATCH request to: {}", url);
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Object> entity = new HttpEntity<>(body == null ? Collections.emptyMap() : body, headers);
+
+            ResponseEntity<T> response = restTemplate.exchange(url, HttpMethod.PATCH, entity, responseType);
+            return response.getBody();
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.warn("Python backend returned {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return handleBackendError(e.getResponseBodyAsString(), e.getStatusCode().value(), responseType);
+        } catch (RestClientException e) {
+            log.error("Failed to proxy PATCH to {}: {}", endpoint, e.getMessage());
+            return createErrorResponse("Failed to connect to game server: " + e.getMessage(), 500, responseType);
+        }
+    }
+
+    /**
+     * Generic proxy DELETE request
+     */
+    public <T> T proxyDelete(String endpoint, Class<T> responseType) {
+        String url = pythonServerUrl + endpoint;
+        log.info("Proxying DELETE request to: {}", url);
+
+        try {
+            ResponseEntity<T> response = restTemplate.exchange(url, HttpMethod.DELETE, null, responseType);
+            return response.getBody();
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.warn("Python backend returned {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return handleBackendError(e.getResponseBodyAsString(), e.getStatusCode().value(), responseType);
+        } catch (RestClientException e) {
+            log.error("Failed to proxy DELETE to {}: {}", endpoint, e.getMessage());
+            return createErrorResponse("Failed to connect to game server: " + e.getMessage(), 500, responseType);
+        }
+    }
+
+    /**
      * Find the latest game using Java Streams
      */
     public Map<String, Object> getLatestGame() {
@@ -76,11 +121,12 @@ public class PythonProxyService {
                     pythonServerUrl + "/games?limit=100",
                     HttpMethod.GET,
                     null,
-                    new ParameterizedTypeReference<>() {}
-            );
+                    new ParameterizedTypeReference<>() {
+                    });
 
             Map<String, Object> body = response.getBody();
-            if (body == null || !body.containsKey("games")) return null;
+            if (body == null || !body.containsKey("games"))
+                return null;
 
             List<Map<String, Object>> games = (List<Map<String, Object>>) body.get("games");
 

@@ -64,7 +64,7 @@ public class WebSecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -78,13 +78,28 @@ public class WebSecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
+                        // Swagger/OpenAPI documentation
+                        .requestMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-resources/**").permitAll()
+                        .requestMatchers("/webjars/**").permitAll()
+                        // Auth endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/signin").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
-                        .requestMatchers("/api/teams").permitAll() // Public for dropdown
-                        .requestMatchers("/api/scoreboard").permitAll() // Public scoreboard
+                        // Public team list for dropdown
+                        .requestMatchers("/api/teams").permitAll()
+                        // Public scoreboards
+                        .requestMatchers("/api/scoreboard").permitAll()
+                        .requestMatchers("/api/scoreboard/**").permitAll()
+                        .requestMatchers("/api/proxy/scoreboard").permitAll()
+                        .requestMatchers("/api/proxy/scoreboard/**").permitAll()
+                        // Public tick info (teams need to know current tick)
+                        .requestMatchers("/api/proxy/ticks/current").permitAll()
+                        .requestMatchers("/api/proxy/ticks/latest").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated());
 
