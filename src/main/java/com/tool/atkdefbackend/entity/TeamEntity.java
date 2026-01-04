@@ -5,7 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Team entity - combines login credentials and team info
@@ -55,7 +55,5 @@ public class TeamEntity {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-
-    // --- RELATIONSHIPS ---
 
 }
