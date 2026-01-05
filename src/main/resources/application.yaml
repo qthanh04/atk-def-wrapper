@@ -6,8 +6,8 @@ spring:
   datasource:
     # Use same credentials as GameCoreServer
     url: jdbc:postgresql://localhost:5432/adg_core
-    username: postgres
-    password: postgres
+    username: admin
+    password: admin123
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -27,9 +27,7 @@ jwt:
   expirationMs: 86400000
 
 # File Upload Configuration
-upload:
-  checker-path: ./uploads/checkers
-  vulnbox-path: ./uploads/vulnbox
+
 
 # Python Game Server Configuration
 python:

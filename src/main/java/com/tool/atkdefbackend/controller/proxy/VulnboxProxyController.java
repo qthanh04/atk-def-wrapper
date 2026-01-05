@@ -1,10 +1,13 @@
 package com.tool.atkdefbackend.controller.proxy;
 
 import com.tool.atkdefbackend.service.PythonProxyService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -26,6 +29,26 @@ public class VulnboxProxyController {
 
     public VulnboxProxyController(PythonProxyService pythonProxyService) {
         this.pythonProxyService = pythonProxyService;
+    }
+
+    /**
+     * POST /api/proxy/vulnboxes - Create/Upload new vulnbox
+     * Roles: ADMIN only
+     */
+    @Operation(summary = "Upload/Create Vulnbox", description = "Upload a new vulnbox docker image")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createVulnbox(
+            @RequestParam("name") String name,
+            @RequestParam("docker_image") MultipartFile dockerImage) {
+
+        org.springframework.util.MultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
+        body.add("docker_image", dockerImage.getResource());
+
+        String endpoint = "/vulnboxes?name="
+                + java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8);
+        Map<String, Object> result = pythonProxyService.proxyMultipartPost(endpoint, body, Map.class);
+        return ResponseEntity.ok(result);
     }
 
     /**

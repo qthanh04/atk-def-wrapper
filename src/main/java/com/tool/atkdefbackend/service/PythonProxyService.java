@@ -54,6 +54,30 @@ public class PythonProxyService {
     }
 
     /**
+     * Proxy POST request with Multipart/Form-Data (File Upload)
+     */
+    public <T> T proxyMultipartPost(String endpoint, org.springframework.util.MultiValueMap<String, Object> body,
+            Class<T> responseType) {
+        String url = pythonServerUrl + endpoint;
+        log.info("Proxying Multipart POST request to: {}", url);
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<Object> entity = new HttpEntity<>(body, headers);
+
+            return restTemplate.postForObject(url, entity, responseType);
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.warn("Python backend returned {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return handleBackendError(e.getResponseBodyAsString(), e.getStatusCode().value(), responseType);
+        } catch (RestClientException e) {
+            log.error("Failed to proxy Multipart POST to {}: {}", endpoint, e.getMessage());
+            return createErrorResponse("Failed to connect to game server: " + e.getMessage(), 500, responseType);
+        }
+    }
+
+    /**
      * Generic proxy GET request
      */
     public <T> T proxyGet(String endpoint, Class<T> responseType) {
