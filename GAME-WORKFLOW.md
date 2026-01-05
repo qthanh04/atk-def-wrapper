@@ -161,30 +161,94 @@ curl -X POST http://localhost:8080/api/proxy/games \
 
 #### 1.2 Upload VulnBox
 
+VulnBox là Docker image chứa các vulnerable services. Upload qua API proxy:
+
 ```bash
-# Via API (or use Swagger UI)
-curl -X POST http://localhost:8080/api/upload/vulnbox \
+# Upload VulnBox docker image
+curl -X POST http://localhost:8080/api/proxy/vulnboxes \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@vulnbox.zip" \
-  -F "challengeId=1"
+  -F "name=web_service_vulnbox" \
+  -F "docker_image=@/path/to/vulnbox.tar"
+
+# Response:
+# {
+#   "id": "vulnbox-uuid-123",
+#   "name": "web_service_vulnbox",
+#   "file_path": "uploads/vulnboxes/xxx_vulnbox.tar",
+#   "created_at": "2024-01-05T10:00:00"
+# }
 
 # Assign VulnBox to Game
-curl -X POST "http://localhost:8080/api/proxy/games/{game_id}/assign-vulnbox?vulnboxId={vulnbox_id}" \
+VULNBOX_ID="vulnbox-uuid-123"
+curl -X POST "http://localhost:8080/api/proxy/games/{game_id}/assign-vulnbox?vulnbox_id=$VULNBOX_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 #### 1.3 Upload Checker
 
+Checker là Python script kiểm tra service có hoạt động đúng không:
+
 ```bash
 # Upload checker script
-curl -X POST http://localhost:8080/api/upload/checker \
+curl -X POST http://localhost:8080/api/proxy/checkers \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@checker.py" \
-  -F "challengeId=1"
+  -F "name=web_service_checker" \
+  -F "file=@/path/to/checker.py"
+
+# Response:
+# {
+#   "id": "checker-uuid-456",
+#   "name": "web_service_checker",
+#   "file_path": "uploads/checkers/xxx_checker.py",
+#   "module_name": "uploads.checkers.xxx_checker",
+#   "created_at": "2024-01-05T10:00:00"
+# }
 
 # Assign Checker to Game
-curl -X POST "http://localhost:8080/api/proxy/games/{game_id}/assign-checker?checkerId={checker_id}" \
+CHECKER_ID="checker-uuid-456"
+curl -X POST "http://localhost:8080/api/proxy/games/{game_id}/assign-checker?checker_id=$CHECKER_ID" \
   -H "Authorization: Bearer $TOKEN"
+```
+
+**Checker Script Example:**
+
+```python
+#!/usr/bin/env python3
+"""
+Checker script for web service
+Must implement check() function
+"""
+
+def check(host: str, port: int) -> dict:
+    """
+    Check if service is working correctly
+    
+    Returns:
+        {
+            "status": "UP" | "DOWN" | "ERROR",
+            "message": "Service is running",
+            "latency_ms": 123
+        }
+    """
+    import requests
+    try:
+        response = requests.get(f"http://{host}:{port}/health", timeout=5)
+        if response.status_code == 200:
+            return {
+                "status": "UP",
+                "message": "Service is running",
+                "latency_ms": int(response.elapsed.total_seconds() * 1000)
+            }
+        else:
+            return {
+                "status": "ERROR",
+                "message": f"Unexpected status code: {response.status_code}"
+            }
+    except Exception as e:
+        return {
+            "status": "DOWN",
+            "message": f"Connection failed: {str(e)}"
+        }
 ```
 
 #### 1.4 Add Teams
@@ -508,6 +572,10 @@ TOTAL_SCORE = ATTACK_POINTS + DEFENSE_POINTS + SLA_POINTS
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/proxy/games` | Create game |
+| POST | `/api/proxy/checkers` | Upload checker script |
+| POST | `/api/proxy/vulnboxes` | Upload vulnbox docker image |
+| POST | `/api/proxy/games/{id}/assign-checker` | Assign checker to game |
+| POST | `/api/proxy/games/{id}/assign-vulnbox` | Assign vulnbox to game |
 | POST | `/api/proxy/games/{id}/start` | Start game |
 | POST | `/api/proxy/games/{id}/stop` | Stop game |
 | GET | `/api/proxy/flags` | View all flags |
@@ -575,10 +643,11 @@ http://localhost:8080/swagger-ui.html
 ### Admin Checklist
 
 - [ ] Create game với settings đúng
-- [ ] Upload và assign VulnBox
-- [ ] Upload và assign Checker
+- [ ] Upload VulnBox qua `/api/proxy/vulnboxes`
+- [ ] Upload Checker qua `/api/proxy/checkers`
+- [ ] Assign VulnBox và Checker cho game
 - [ ] Add tất cả teams vào game
-- [ ] Test checker hoạt động
+- [ ] Test checker hoạt động (validate endpoint)
 - [ ] Start game
 - [ ] Gửi SSH credentials cho teams
 - [ ] Monitor scoreboard

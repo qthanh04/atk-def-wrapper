@@ -5,7 +5,7 @@
 Backend này đóng vai trò như một **API Gateway** với các chức năng:
 - 🔐 **Authentication & Authorization** - JWT-based security
 - 👥 **Team Management** - CRUD với auto-registration (quản lý trực tiếp `teams` table)
-- 📤 **File Upload** - Checker scripts & VulnBox
+- 📤 **File Upload Proxy** - Upload Checker scripts & VulnBox docker images (proxy to Python Core)
 - 🎮 **Game Control Proxy** - Forward requests tới Python Game Server (Logic xử lý game core)
 - 📊 **Scoreboard Proxy** - Proxy tới Python service để lấy Real-time scoreboard
 - 📖 **Swagger UI** - API Documentation tích hợp sẵn
@@ -181,6 +181,13 @@ Java Backend tích hợp sẵn **Swagger UI** để test API trực quan.
 | `POST` | `/api/auth/signup` | Đăng ký Team mới |
 | `GET` | `/api/teams` | Lấy danh sách Teams |
 
+### Upload Proxy (Forward to Python Core)
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| `POST` | `/api/proxy/checkers` | Upload Checker script (multipart/form-data) |
+| `POST` | `/api/proxy/vulnboxes` | Upload VulnBox docker image (multipart/form-data) |
+
 ### Game Proxy (Forward to Python)
 
 | Method | Endpoint | Mô tả |
@@ -188,6 +195,8 @@ Java Backend tích hợp sẵn **Swagger UI** để test API trực quan.
 | `GET` | `/api/proxy/games` | Lấy danh sách games |
 | `POST` | `/api/proxy/games` | Tạo game mới (Admin) |
 | `POST` | `/api/proxy/games/{id}/start` | Start game |
+| `POST` | `/api/proxy/games/{id}/assign-checker` | Gán checker cho game |
+| `POST` | `/api/proxy/games/{id}/assign-vulnbox` | Gán vulnbox cho game |
 | `POST` | `/api/proxy/submissions` | Submit Flag (Team) |
 | `GET` | `/api/proxy/scoreboard` | Xem bảng điểm |
 
