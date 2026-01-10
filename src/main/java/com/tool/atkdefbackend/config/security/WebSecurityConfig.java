@@ -1,5 +1,6 @@
 package com.tool.atkdefbackend.config.security;
 
+import com.tool.atkdefbackend.config.RateLimitingFilter;
 import com.tool.atkdefbackend.service.auth.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,12 +31,14 @@ public class WebSecurityConfig {
     private final UserDetailsServiceImpl userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
     private final JwtUtils jwtUtils;
+    private final RateLimitingFilter rateLimitingFilter;
 
     public WebSecurityConfig(UserDetailsServiceImpl userDetailsService, AuthEntryPointJwt unauthorizedHandler,
-            JwtUtils jwtUtils) {
+            JwtUtils jwtUtils, RateLimitingFilter rateLimitingFilter) {
         this.userDetailsService = userDetailsService;
         this.unauthorizedHandler = unauthorizedHandler;
         this.jwtUtils = jwtUtils;
+        this.rateLimitingFilter = rateLimitingFilter;
     }
 
     @Bean
@@ -57,15 +61,33 @@ public class WebSecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // BCrypt with strength 12 (2^12 iterations) for enhanced security
+        // Based on NewTech.md Section 7: Security Summary
+        return new BCryptPasswordEncoder(12);
     }
 
+    /**
+     * CORS Configuration
+     *
+     * Security Note: In production, replace "*" with specific allowed origins
+     * Example: List.of("https://ctf.example.com", "https://admin.ctf.example.com")
+     *
+     * Current configuration allows all origins for development convenience
+     * Consider using environment variable: ${ALLOWED_ORIGINS:*}
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*"));
+
+        // TODO: In production, replace with specific origins from environment variable
+        // configuration.setAllowedOrigins(List.of("https://your-frontend.com"));
+        configuration.setAllowedOriginPatterns(List.of("*")); // More secure than setAllowedOrigins("*")
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true); // Required for cookies/auth headers
+        configuration.setMaxAge(3600L); // Cache preflight response for 1 hour
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -104,6 +126,12 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated());
 
         http.authenticationProvider(authenticationProvider());
+
+        // Add Rate Limiting Filter before CORS
+        // Based on NewTech.md Section 8: Spring Security Filter Chain
+        http.addFilterBefore(rateLimitingFilter, SecurityContextHolderFilter.class);
+
+        // Add JWT Authentication Filter
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

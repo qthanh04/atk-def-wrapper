@@ -40,6 +40,7 @@ public class CheckerProxyController {
     @Operation(summary = "Upload/Create Checker", description = "Upload a new checker script")
     @PostMapping(value = "/checkers", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> createChecker(
             @RequestParam("name") String name,
             @RequestParam("file") MultipartFile file) {
@@ -72,6 +73,7 @@ public class CheckerProxyController {
      */
     @GetMapping("/checkers/{checkerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> getChecker(@PathVariable String checkerId) {
         Object result = pythonProxyService.proxyGet("/checkers/" + checkerId, Map.class);
         return ResponseEntity.ok(result);
@@ -83,6 +85,7 @@ public class CheckerProxyController {
      */
     @PatchMapping("/checkers/{checkerId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> updateChecker(
             @PathVariable String checkerId,
             @RequestBody Map<String, Object> request) {
@@ -96,6 +99,7 @@ public class CheckerProxyController {
      */
     @DeleteMapping("/checkers/{checkerId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> deleteChecker(@PathVariable String checkerId) {
         Object result = pythonProxyService.proxyDelete("/checkers/" + checkerId, Map.class);
         return ResponseEntity.ok(result);
@@ -107,6 +111,7 @@ public class CheckerProxyController {
      */
     @PostMapping("/checkers/{checkerId}/validate")
     @PreAuthorize("hasRole('ADMIN')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> validateChecker(@PathVariable String checkerId) {
         Map<String, Object> result = pythonProxyService.proxyPost(
                 "/checkers/" + checkerId + "/validate", null, Map.class);
@@ -151,6 +156,7 @@ public class CheckerProxyController {
      */
     @GetMapping("/checker/statuses/{statusId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> getCheckerStatus(@PathVariable String statusId) {
         Object result = pythonProxyService.proxyGet("/checker/statuses/" + statusId, Map.class);
         return ResponseEntity.ok(result);
@@ -162,6 +168,7 @@ public class CheckerProxyController {
      */
     @DeleteMapping("/checker/statuses/{statusId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> deleteCheckerStatus(@PathVariable String statusId) {
         Object result = pythonProxyService.proxyDelete("/checker/statuses/" + statusId, Map.class);
         return ResponseEntity.ok(result);

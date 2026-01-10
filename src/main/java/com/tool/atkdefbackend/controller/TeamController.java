@@ -67,7 +67,7 @@ public class TeamController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<?> updateTeam(@PathVariable Integer id,
-            @RequestBody UpdateTeamRequest request) {
+            @Valid @RequestBody UpdateTeamRequest request) {
         TeamResponse team = teamService.updateTeam(id, request);
         return ResponseEntity.ok(team);
     }

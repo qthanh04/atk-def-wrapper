@@ -84,10 +84,17 @@ public class PythonProxyService {
         String url = pythonServerUrl + endpoint;
         log.info("Proxying GET request to: {}", url);
         try {
-            return restTemplate.getForObject(url, responseType);
+            T response = restTemplate.getForObject(url, responseType);
+            if (response == null) {
+                throw new RuntimeException("Received null response from Python backend");
+            }
+            return response;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.warn("Python backend returned {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return handleBackendError(e.getResponseBodyAsString(), e.getStatusCode().value(), responseType);
         } catch (RestClientException e) {
             log.error("Failed to proxy GET to {}: {}", endpoint, e.getMessage());
-            throw e; // Tốt nhất là ném lỗi ra để Controller xử lý
+            throw e; // Let controller or GlobalExceptionHandler handle it
         }
     }
 
@@ -140,7 +147,6 @@ public class PythonProxyService {
      */
     public Map<String, Object> getLatestGame() {
         try {
-            // Dùng ParameterizedTypeReference để lấy đúng List<Map> thay vì Map chung chung
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     pythonServerUrl + "/games?limit=100",
                     HttpMethod.GET,
@@ -152,12 +158,18 @@ public class PythonProxyService {
             if (body == null || !body.containsKey("games"))
                 return null;
 
-            List<Map<String, Object>> games = (List<Map<String, Object>>) body.get("games");
+            Object gamesObj = body.get("games");
+            if (!(gamesObj instanceof List)) {
+                log.error("Games data is not a List: {}", gamesObj.getClass());
+                return null;
+            }
 
-            // 4. Tối ưu logic sort bằng Stream
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> games = (List<Map<String, Object>>) gamesObj;
+
             return games.stream()
-                    .filter(g -> g.get("created_at") != null) // Lọc game lỗi không có ngày
-                    .max(Comparator.comparing(g -> (String) g.get("created_at"))) // Tìm cái mới nhất
+                    .filter(g -> g != null && g.get("created_at") != null)
+                    .max(Comparator.comparing(g -> String.valueOf(g.get("created_at"))))
                     .orElse(null);
 
         } catch (Exception e) {
@@ -177,6 +189,7 @@ public class PythonProxyService {
     }
 
     // Gộp logic start/stop để tránh lặp code
+    @SuppressWarnings("unchecked")
     private Map<String, Object> controlGame(String action) {
         Map<String, Object> game = getLatestGame();
         if (game == null) {
@@ -204,9 +217,10 @@ public class PythonProxyService {
 
     @SuppressWarnings("unchecked")
     private <T> T handleBackendError(String responseBody, int status, Class<T> responseType) {
-        // Chỉ an toàn nếu T là Map hoặc Object
+        // Only safe if T is Map or Object
         if (!Map.class.isAssignableFrom(responseType) && !Object.class.equals(responseType)) {
-            throw new RuntimeException("Backend Error: " + responseBody); // Không thể ép kiểu Map sang POJO được
+            log.error("Cannot cast error response to type: {}", responseType.getName());
+            throw new RuntimeException("Backend Error: " + responseBody);
         }
 
         try {
@@ -215,12 +229,18 @@ public class PythonProxyService {
             errorMap.put("success", false);
             return (T) errorMap;
         } catch (Exception e) {
+            log.error("Failed to parse error response: {}", e.getMessage());
             return createErrorResponse(responseBody, status, responseType);
         }
     }
 
     @SuppressWarnings("unchecked")
     private <T> T createErrorResponse(String message, int status, Class<T> responseType) {
+        if (!Map.class.isAssignableFrom(responseType) && !Object.class.equals(responseType)) {
+            log.error("Cannot create error response for type: {}", responseType.getName());
+            throw new RuntimeException("Error: " + message);
+        }
+
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("error", message);
         errorResponse.put("status", status);

@@ -130,9 +130,9 @@ public class TeamService {
                 .orElseThrow(() -> new IllegalArgumentException("Team not found"));
 
         // Validate unique name if name is changed
-        if (request.getName() != null) {
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
             String newName = request.getName().trim();
-            if (!newName.equals(team.getName()) && !newName.isEmpty()) {
+            if (!newName.equals(team.getName())) {
                 if (teamRepository.existsByName(newName)) {
                     throw new IllegalArgumentException("Team name already exists!");
                 }
@@ -140,12 +140,17 @@ public class TeamService {
             }
         }
 
-        if (request.getCountry() != null)
+        if (request.getCountry() != null && !request.getCountry().trim().isEmpty()) {
             team.setCountry(request.getCountry().trim());
-        if (request.getAffiliation() != null)
+        }
+
+        if (request.getAffiliation() != null && !request.getAffiliation().trim().isEmpty()) {
             team.setAffiliation(request.getAffiliation().trim());
-        if (request.getIpAddress() != null)
+        }
+
+        if (request.getIpAddress() != null && !request.getIpAddress().trim().isEmpty()) {
             team.setIpAddress(request.getIpAddress().trim());
+        }
 
         TeamEntity savedTeam = teamRepository.save(team);
         return mapToResponse(savedTeam);

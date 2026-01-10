@@ -65,3 +65,25 @@ jacoco/
 # Virtual machine crash logs
 hs_err_pid*
 replay_pid*
+
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE - Eclipse / IntelliJ / VSCode
+.classpath
+.project
+.factorypath
+.settings/
+*.code-workspace
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Env
+.env
